@@ -1,0 +1,315 @@
+<!doctype html>
+<html class="no-js" lang="">
+  <head>
+      <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <title>LookLive API demo</title>
+      <meta name="description" content="">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="stylesheet" href="css/normalize.css">
+      <link rel="stylesheet" href="css/main.css">
+      <link href="css/bootstrap.min.css" rel="stylesheet">
+      <link href="//vjs.zencdn.net/4.12/video-js.css" rel="stylesheet">
+      <script src="js/vendor/modernizr-2.8.3.min.js"></script>
+  </head>
+  <body>
+    <!--[if lt IE 8]>
+        <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+    <![endif]-->
+    <nav class="navbar navbar-inverse">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="#">
+            <img alt="Brand" src="http://a.looklive.com/static/img/logo.png" height="19px;">
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container">
+
+      <div class="page-header">
+        <h1>LookLive API demo</h1>
+        <p class="lead" id="episode_title"></p>
+      </div>
+
+      <div class="row">
+        <div class="col-md-7">
+          <div id="player" class="hidden">
+            <video id="example_video_1" class="video-js vjs-default-skin"
+              controls preload="auto" width="640" height="360"
+              poster="img/suits.jpg">
+             <source src="videos/suits.s05e01.mp4" type='video/mp4' />
+             <source src="videos/suits.s05e01.webm" type='video/webm' />
+             <p class="vjs-no-js">To view this video please enable JavaScript, and consider upgrading to a web browser that <a href="http://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a></p>
+            </video>
+          </div>
+          <div class="authenticate hidden">
+            <a class="connect btn btn-info" href="">Connect to LookLive</a>
+          </div>
+
+          <div class="authenticated hidden">
+            <p>
+              You are authorized, waiting for api data...
+              <span class="token">[no token]</span>.
+            </p>
+          </div>
+        </div>
+        <div class="col-md-5">
+          <ul class="media-list" id="appearances"><!-- placeholder --></ul>
+        </div>
+      </div>
+      <br>
+      <div class="row">
+        <div class="col-md-12" id="thumbnails"></div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-7">
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="http://www.looklive.com/docs/api/">LookLive API documentation</a></li>
+            <li><a href="">LookLive GitHub</a></li>
+          </ul>
+          </p>
+          <h4>Disclaimer</h4>
+          <p>This is a simple application that demonstrates how to use the LookLive API 
+            in a HTML/JavaScript application. This application is for educational purposes only.</p>
+            <p>Copyrighted material belongs to it's rightful owner and may not be reproduced.</p>
+          <p>
+        </div>
+        <div class="col-md-5"></div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-7">
+         
+        </div>
+        <div class="col-md-5">
+        </div>
+      </div>
+      <br>
+    </div>      
+      
+    <script src="js/vendor/jquery-1.11.3.min.js"></script>
+    <script src="js/vendor/bootstrap.min.js"></script>
+    <script src="js/plugins.js"></script>
+    <script src="//vjs.zencdn.net/4.12/video.js"></script>    
+    <script src="js/vendor/handlebars-v3.0.3.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/templates/person.tpl.js"></script>
+    <script src="js/templates/products.tpl.js"></script>
+    <script src="js/templates/thumbnails.tpl.js"></script>
+    <script src="js/templates/episode.tpl.js"></script>
+
+    <script>
+      var host = 'http://www.looklive.com'
+
+      var episode_id = '926f0e06-e3bd-4ab8-aebf-bcc2f937b0ed';
+      var api_version = '/api/v3'
+      var base_url = host + api_version
+
+      var episode_url = base_url + '/episodes/<uuid>/'
+      var appearance_url = base_url + '/appearances/<uuid>/?ir=s&t=1'
+      var appearance_list_url = base_url + '/episodes/<uuid>/appearances/?limit=40'
+      var product_url = base_url + '/products/<uuid>/'
+      
+      var myPlayer = videojs('example_video_1');
+      myPlayer.hide()
+
+      function start_video(){
+        setTimeout(function(){myPlayer.show().play()}, 100);
+
+        var debug_offset = 0
+        var timestamps = {};
+
+        /**
+         * Fetching episode details in order to show a nice title.
+         */
+        $.ajax({
+          url: episode_url.replace('<uuid>',episode_id),
+          success: function(data, status, xhr){
+            $('div.authenticated').addClass('hidden');
+            $('#episode_title').text(Handlebars.templates.episode(data))
+        }})
+
+        /**
+         * Fetch all appearances for this episode and start the video when we're
+         * ready.
+         */
+        $.ajax({
+          url: appearance_list_url.replace('<uuid>', episode_id),
+          success: function (data, status, xhr){
+
+            for(var i = 0; i < data.items.length; i++){
+                var app = data.items[i]
+                timestamps[app.timestamp - debug_offset] = app
+            }
+            /**
+             * Render thumbnails of all appearances and register a handler to 
+             * allow seeking to a particular scene.
+             */
+            $('#thumbnails').append(Handlebars.templates.thumbnails(data));
+            $('#thumbnails').on('click', ' img.img-thumbnail', function(){
+              var seconds = $(this).data('seconds' );
+              //player.seekTo(seconds - 0)
+              myPlayer.currentTime(seconds -3)
+            });
+
+            /**
+             * Poll the video every second for its position so we can check if
+             * we have an appearance to show.
+             */
+            var interval = setInterval(function(){
+              var current_position = parseInt(myPlayer.currentTime(), 10);
+
+              var upcoming = current_position + 3
+              if(upcoming in timestamps){
+                  show_appearance(timestamps[upcoming])
+              }
+            }, 1000);
+          }
+        })
+      } // end of start_video
+
+      function get_appearance_details(appearance_id){
+        $('.img-thumbnail').css({ "width": '50px'})
+        $('#thumb_' + appearance_id).css({ "width": '150px'})
+
+        $.ajax({
+          url: appearance_url.replace('<uuid>', appearance_id),
+          success: function (data, status, xhr){
+            /**
+             * we need more details about products, do some requests in 
+             * parallel
+             */              
+            var promises = []
+            for(var i = 0; i < data.product_occurrences.length; i++){
+              var promise = $.ajax({
+                url: product_url.replace('<uuid>', 
+                  data.product_occurrences[i].product.id),
+              });
+
+              promises.push(promise)
+            }
+
+            $.when.apply($, promises).then(function(){
+
+              var args = Array.prototype.slice.call(arguments);
+              if(!Array.isArray(args[0])){
+                var args = [args]
+              }
+              /**
+               * adding the extra product details, it's easier to render the
+               * template this way
+               */
+              for(var i = 0; i < args.length; i++){
+                data.product_occurrences[i]['details'] = args[i][0]
+              }
+
+              $('#app_body_'+data.id).append(Handlebars.templates.products(data));
+
+              /**
+               * a little gimmick, show countdown for how long the appearance
+               * will show
+               */
+              scoped_countdown(data.id, 10)();
+            });
+          }
+        })
+      }
+
+      var intervals = []
+      function scoped_countdown(id, seconds){
+        while(true){
+          var iv = intervals.pop();
+          if(!iv){
+            break;
+          }
+          clearInterval(iv);
+        }
+
+        return function(){
+          var elem = $('#app_'+id);
+          setTimeout(function(){ elem.remove() }, 10000);
+
+          var interval = setInterval(function(){
+            seconds--;
+
+            $('#timer_'+id).text('Showing for ' + seconds + ' more seconds')
+
+            if(seconds == 0){
+              clearInterval(interval)
+              $('#thumb_'+id).css({ "width": '50px'})
+            }
+          }, 1000);
+
+          intervals.push(interval);
+        }
+      }
+
+      function show_appearance(appearance){
+        if($('#app_'+appearance.id).length == 0){ // only show 1 at a time
+          $('#appearances').empty();
+          $('#appearances').append(Handlebars.templates.person(appearance));
+          get_appearance_details(appearance.id);
+        }
+      }
+
+
+    </script>
+    <!-- OAuth2 implicit grant flow -->
+    <script type="text/javascript" charset="utf-8">
+      $(function () {
+        $('#player').removeClass('hidden');
+
+        var extractToken = function(hash) {
+          var match = hash.match(/access_token=([\w-]+)/);
+          return !!match && match[1];
+        };
+
+        var CLIENT_ID = 'A1S1EvIXGNRXgsUU7T743vLcSsEn2agJYmeIrT0H';
+        var AUTHORIZATION_ENDPOINT = "http://www.looklive.com/oauth/authorize/";
+
+        var token = extractToken(document.location.hash);
+
+        if (token) {
+          $('span.token').text(token);
+          $('div.authenticated').removeClass('hidden');
+
+          /**
+           * Now that we've got a token, make sure to supply it to every ajax 
+           * call.
+           */
+          $.ajaxSetup({
+            beforeSend: function(xhr) {
+              xhr.setRequestHeader("Authorization", "Bearer " + token);
+            }
+          });
+          /**
+           * And start the video!
+           */
+          start_video()
+        } else {
+          $('div.authenticate').removeClass('hidden');
+
+          /**
+           * Build the OAuth2 url.
+           * If you want to build your own application, you will need to request
+           * a CLIENT_ID and provide us with a redirect location.
+           *
+           * For this demo, we only request the pu (public) scope, which doesn't
+           * allow for changing user account data.
+           */
+          var authUrl = AUTHORIZATION_ENDPOINT + 
+            "?response_type=token" +
+            "&client_id=" + CLIENT_ID +
+            "&scope=pu" +
+            "&redirect_uri=" + encodeURIComponent(window.location);
+
+          $("a.connect").attr("href", authUrl);
+        }
+      });
+    </script>
+  </body>
+</html>
