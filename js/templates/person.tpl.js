@@ -6,7 +6,7 @@ templates['person'] = template({"compiler":[6,">= 2.0.0-beta.1"],"main":function
   return "<li class=\"media\" id=\"app_"
     + alias3(((helper = (helper = helpers.id || (depth0 != null ? depth0.id : depth0)) != null ? helper : alias1),(typeof helper === alias2 ? helper.call(depth0,{"name":"id","hash":{},"data":data}) : helper)))
     + "\">\n    <div class=\"media\">\n      <div class=\"media-left\">\n        <a href=\"\">\n          <img class=\"media-object\" src=\"http:"
-    + alias3(alias4(((stack1 = (depth0 != null ? depth0.avatar : depth0)) != null ? stack1.url : stack1), depth0))
+    + alias3(alias4(((stack1 = ((stack1 = (depth0 != null ? depth0.subject : depth0)) != null ? stack1.avatar : stack1)) != null ? stack1.url : stack1), depth0))
     + "\" style=\"width: 50px; height: 50px;\">\n        </a>\n      </div>\n      <div class=\"media-body\" id=\"app_body_"
     + alias3(((helper = (helper = helpers.id || (depth0 != null ? depth0.id : depth0)) != null ? helper : alias1),(typeof helper === alias2 ? helper.call(depth0,{"name":"id","hash":{},"data":data}) : helper)))
     + "\">\n        <h4 class=\"media-heading\">"
